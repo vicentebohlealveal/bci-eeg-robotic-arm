@@ -190,14 +190,15 @@ def connect(params, retries=4):
 
 
 # ------------------------------- Seguridad ---------------------------------
-def signal_ok(h9, h10):
+def signal_stats(h9, h10):
+    """(ok, std_TP9, std_TP10) tras quitar la deriva lenta de la ventana de ~1 s."""
+    stds = []
     for q in (h9, h10):
         if len(q) < FS // 2:
-            return False
-        s = float(np.std(np.asarray(q)))
-        if s < MIN_STD_UV or s > MAX_STD_UV:
-            return False
-    return True
+            return False, 0.0, 0.0
+        stds.append(float(np.std(signal.detrend(np.asarray(q, dtype=np.float64)))))
+    ok = all(MIN_STD_UV <= v <= MAX_STD_UV for v in stds)
+    return ok, stds[0], stds[1]
 
 
 # --------------------------------- Main ------------------------------------
@@ -286,7 +287,8 @@ def main():
                 print("AVISO: no llegan datos del acelerometro; la proteccion por movimiento esta INACTIVA.")
                 acc_warned = True
             moving = len(acc_hist) >= 10 and float(np.std(acc_hist)) > MOTION_STD_G
-            armed = warm and signal_ok(h9, h10) and not moving and now > freeze_until
+            sig_ok, s9, s10 = signal_stats(h9, h10)
+            armed = warm and sig_ok and not moving and now > freeze_until
 
             if armed:
                 angles[axis] = u * 180.0
@@ -299,7 +301,8 @@ def main():
             if now - last_log > 0.5:
                 last_log = now
                 print(f"eje={axis} ang={angles[axis]:5.1f} env={blink.env:6.1f}uV "
-                      f"armed={int(armed)} mov={int(moving)}")
+                      f"armed={int(armed)} sig={int(sig_ok)} mov={int(moving)} "
+                      f"tp9={s9:.0f} tp10={s10:.0f}uV")
     except KeyboardInterrupt:
         pass
     finally:
