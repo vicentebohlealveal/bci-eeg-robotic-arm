@@ -20,7 +20,8 @@ from pathlib import Path
 
 import numpy as np
 from scipy import signal
-from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds, LogLevels
+from brainflow.board_shim import (BoardShim, BrainFlowInputParams, BoardIds,
+                                  BrainFlowPresets, LogLevels)
 from brainflow.exit_codes import BrainFlowError
 from brainflow.data_filter import DataFilter, WindowOperations
 
@@ -29,7 +30,8 @@ BOARD_ID = BoardIds.MUSE_S_BOARD.value          # 21
 FS = BoardShim.get_sampling_rate(BOARD_ID)      # 256 Hz
 EEG_ROWS = BoardShim.get_eeg_channels(BOARD_ID)  # orden Muse: TP9, AF7, AF8, TP10
 TP9, AF7, AF8, TP10 = EEG_ROWS
-ACC_ROWS = BoardShim.get_accel_channels(BOARD_ID)
+AUX = BrainFlowPresets.AUXILIARY_PRESET.value      # el acelerometro vive en otro preset (52 Hz)
+ACC_ROWS = BoardShim.get_accel_channels(BOARD_ID, AUX)
 
 N_AXES = 4
 TICK_S = 0.05            # lazo principal a 20 Hz
@@ -242,6 +244,7 @@ def main():
         freeze_until = 0.0
         h9, h10 = deque(maxlen=FS), deque(maxlen=FS)
         acc_hist = deque(maxlen=ACC_N)
+        acc_warned = False
         t0 = last_idx = last_tx = last_log = time.time()
         board.get_board_data()
         bi.clear()
@@ -276,10 +279,12 @@ def main():
             # --- Seguridad ---
             h9.extend(d[TP9])
             h10.extend(d[TP10])
-            acc = d[ACC_ROWS]
-            mask = np.any(acc != 0, axis=0)         # filas sin muestra nueva vienen en 0
-            if mask.any():
-                acc_hist.extend(np.linalg.norm(acc[:, mask], axis=0))
+            a = board.get_board_data(preset=AUX)    # acelerometro: arreglo aparte, 52 Hz
+            if a.shape[1]:
+                acc_hist.extend(np.linalg.norm(a[ACC_ROWS], axis=0))
+            if now - t0 > 5.0 and not acc_hist and not acc_warned:
+                print("AVISO: no llegan datos del acelerometro; la proteccion por movimiento esta INACTIVA.")
+                acc_warned = True
             moving = len(acc_hist) >= 10 and float(np.std(acc_hist)) > MOTION_STD_G
             armed = warm and signal_ok(h9, h10) and not moving and now > freeze_until
 
