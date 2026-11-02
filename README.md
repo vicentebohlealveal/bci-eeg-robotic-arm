@@ -51,6 +51,10 @@ En `bci_gui.py`: `1` calibra relajado, `2` concentrado, `3` parpadeos, `0` lleva
 - Firmware del ESP32 del brazo (límites de velocidad y parada ante pérdida de comunicación).
 - Fotos o video del prototipo funcionando.
 
+## Historial de versiones
+
+La rama [`historial`](https://github.com/vicentebohlealveal/bci-eeg-robotic-arm/tree/historial) reconstruye, commit por commit, cómo evolucionó el programa a partir de las versiones que quedaron guardadas. El resumen está en [`VERSIONES.md`](https://github.com/vicentebohlealveal/bci-eeg-robotic-arm/blob/historial/VERSIONES.md).
+
 ## Licencia / License
 
 © 2026 Vicente Bohle Alveal. Todos los derechos reservados / All rights reserved. Público solo para revisión como portafolio; ver [LICENSE](LICENSE).
